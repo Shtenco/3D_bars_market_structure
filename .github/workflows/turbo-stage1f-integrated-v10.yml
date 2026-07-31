@@ -33,12 +33,20 @@ jobs:
           echo '1c11a60acad502023c1e91aa9d92a3f4c4be730ba9e27c55a02d22238594b6d2  stage1f-integrated/old-kernel.elf.xz' | sha256sum -c -
           xz -dc stage1f-integrated/old-kernel.elf.xz > stage1f-integrated/old-kernel.elf
           echo '751a130865e74d729a3b21039258579d7bc113b0558faebfde0faf074790dc7f  stage1f-integrated/old-kernel.elf' | sha256sum -c -
+
           tr -d '[:space:]' < stage1f-integrated/kernel-stack-fix.zpatch.b64 | base64 -d > stage1f-integrated/kernel-stack-fix.zpatch
           echo 'f791fbd5f702f1cf4b4f020b4386f942c189e6a7af838bb8909a7b1c8652c603  stage1f-integrated/kernel-stack-fix.zpatch' | sha256sum -c -
           zstd -d --patch-from=stage1f-integrated/old-kernel.elf \
             stage1f-integrated/kernel-stack-fix.zpatch \
+            -o stage1f-integrated/stack-fixed-kernel.elf
+          echo 'b2328b86c496d5cd53199ece697932a03108f8ccb7ec992239978dd8f070e7c7  stage1f-integrated/stack-fixed-kernel.elf' | sha256sum -c -
+
+          tr -d '[:space:]' < stage1f-integrated/kernel-idle-guard-fix.zpatch.b64 | base64 -d > stage1f-integrated/kernel-idle-guard-fix.zpatch
+          echo 'bdbab7139338d85517f19f3c62aa6cc7d123840ab3a08dba2f303e677c9bef82  stage1f-integrated/kernel-idle-guard-fix.zpatch' | sha256sum -c -
+          zstd -d --patch-from=stage1f-integrated/stack-fixed-kernel.elf \
+            stage1f-integrated/kernel-idle-guard-fix.zpatch \
             -o stage1f-integrated/turbo-kernel.elf
-          echo 'b2328b86c496d5cd53199ece697932a03108f8ccb7ec992239978dd8f070e7c7  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
+          echo 'c2bb5922fee670c4eea81892fa9796eb12a289d419fe5c7a29fbc8b89208576d  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
           readelf -h stage1f-integrated/turbo-kernel.elf
 
       - name: Build trusted Multiboot2 ISO
@@ -125,6 +133,7 @@ jobs:
           done
           [[ $(grep -Fc 'TURBO_PROCESS_TEARDOWN_PASS' "$LOG" || true) -eq 6 ]] || { echo 'expected 6 teardown markers' >&2; exit 1; }
           ! grep -Fq '[TURBO PANIC]' "$LOG" || { echo 'kernel panic detected' >&2; exit 1; }
+          ! grep -Fq '[TURBO EXCEPTION]' "$LOG" || { echo 'kernel exception detected' >&2; exit 1; }
           echo 'TURBO_QEMU_STAGE1F_INTEGRATED_PASS' | tee -a "$LOG"
 
       - name: Upload runtime evidence
