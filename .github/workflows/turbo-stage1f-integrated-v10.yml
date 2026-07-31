@@ -18,11 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install official QEMU
+      - name: Install official QEMU and GRUB
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends qemu-system-x86 xz-utils
+          sudo apt-get install -y --no-install-recommends \
+            qemu-system-x86 xz-utils grub-pc-bin grub-common xorriso mtools
           qemu-system-x86_64 --version
+          grub-mkrescue --version
 
       - name: Restore exact release ELF
         run: |
@@ -33,19 +35,37 @@ jobs:
           echo '751a130865e74d729a3b21039258579d7bc113b0558faebfde0faf074790dc7f  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
           readelf -h stage1f-integrated/turbo-kernel.elf
 
+      - name: Build trusted Multiboot2 ISO
+        run: |
+          set -euo pipefail
+          mkdir -p stage1f-integrated/iso/boot/grub
+          cp stage1f-integrated/turbo-kernel.elf stage1f-integrated/iso/boot/turbo-kernel.elf
+          cat > stage1f-integrated/iso/boot/grub/grub.cfg <<'EOF'
+          set timeout=0
+          set default=0
+          menuentry "TURBO META OS Stage-1F Integrated" {
+              multiboot2 /boot/turbo-kernel.elf
+              boot
+          }
+          EOF
+          grub-mkrescue -o stage1f-integrated/turbo-stage1f-integrated.iso stage1f-integrated/iso
+          test -s stage1f-integrated/turbo-stage1f-integrated.iso
+
       - name: Real 4-vCPU QEMU runtime
         id: qemu
         shell: bash
         run: |
           set -euo pipefail
           LOG=stage1f-integrated/qemu-stage1f-integrated.log
+          : > "$LOG"
           set +e
-          timeout 35s qemu-system-x86_64 \
+          timeout 40s qemu-system-x86_64 \
             -m 256M -smp 4 \
             -machine q35,accel=tcg \
             -cpu max \
             -device virtio-serial-pci \
-            -kernel stage1f-integrated/turbo-kernel.elf \
+            -cdrom stage1f-integrated/turbo-stage1f-integrated.iso \
+            -boot d \
             -serial file:$LOG \
             -display none -monitor none -no-reboot -no-shutdown
           status=$?
@@ -110,3 +130,4 @@ jobs:
           path: |
             stage1f-integrated/qemu-stage1f-integrated.log
             stage1f-integrated/turbo-kernel.elf
+            stage1f-integrated/turbo-stage1f-integrated.iso
