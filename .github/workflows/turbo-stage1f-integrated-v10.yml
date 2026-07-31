@@ -27,9 +27,10 @@ jobs:
       - name: Restore exact release ELF
         run: |
           set -euo pipefail
-          echo '303116db712b849e137b57e1c7788e95f7b50bac045beb580d9e32e5bf111ed0  stage1f-integrated/turbo-kernel.elf.xz' | sha256sum -c -
+          cat stage1f-integrated/kernel.part.* | base64 -d > stage1f-integrated/turbo-kernel.elf.xz
+          echo '1c11a60acad502023c1e91aa9d92a3f4c4be730ba9e27c55a02d22238594b6d2  stage1f-integrated/turbo-kernel.elf.xz' | sha256sum -c -
           xz -dc stage1f-integrated/turbo-kernel.elf.xz > stage1f-integrated/turbo-kernel.elf
-          echo 'cdffdd415402c10874969292d2e648c9dc0a3fd5703b24e08a5d1c9fc0025ea3  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
+          echo '751a130865e74d729a3b21039258579d7bc113b0558faebfde0faf074790dc7f  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
           readelf -h stage1f-integrated/turbo-kernel.elf
 
       - name: Real 4-vCPU QEMU runtime
