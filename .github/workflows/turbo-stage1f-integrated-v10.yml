@@ -33,7 +33,7 @@ jobs:
           echo '1c11a60acad502023c1e91aa9d92a3f4c4be730ba9e27c55a02d22238594b6d2  stage1f-integrated/old-kernel.elf.xz' | sha256sum -c -
           xz -dc stage1f-integrated/old-kernel.elf.xz > stage1f-integrated/old-kernel.elf
           echo '751a130865e74d729a3b21039258579d7bc113b0558faebfde0faf074790dc7f  stage1f-integrated/old-kernel.elf' | sha256sum -c -
-          base64 -d stage1f-integrated/kernel-stack-fix.zpatch.b64 > stage1f-integrated/kernel-stack-fix.zpatch
+          tr -d '[:space:]' < stage1f-integrated/kernel-stack-fix.zpatch.b64 | base64 -d > stage1f-integrated/kernel-stack-fix.zpatch
           echo 'f791fbd5f702f1cf4b4f020b4386f942c189e6a7af838bb8909a7b1c8652c603  stage1f-integrated/kernel-stack-fix.zpatch' | sha256sum -c -
           zstd -d --patch-from=stage1f-integrated/old-kernel.elf \
             stage1f-integrated/kernel-stack-fix.zpatch \
