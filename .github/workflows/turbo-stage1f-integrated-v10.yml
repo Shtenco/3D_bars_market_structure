@@ -65,15 +65,17 @@ jobs:
           grub-mkrescue -o stage1f-integrated/turbo-stage1f-integrated.iso stage1f-integrated/iso
           test -s stage1f-integrated/turbo-stage1f-integrated.iso
 
-      - name: Real 4-vCPU QEMU runtime
+      - name: Real 4-vCPU QEMU runtime with exception trace
         id: qemu
         shell: bash
         run: |
           set -euo pipefail
           LOG=stage1f-integrated/qemu-stage1f-integrated.log
+          DEBUG=stage1f-integrated/qemu-stage1f-int.log
           : > "$LOG"
+          : > "$DEBUG"
           set +e
-          timeout 40s qemu-system-x86_64 \
+          timeout 15s qemu-system-x86_64 \
             -m 256M -smp 4 \
             -machine q35,accel=tcg \
             -cpu max \
@@ -81,10 +83,12 @@ jobs:
             -cdrom stage1f-integrated/turbo-stage1f-integrated.iso \
             -boot d \
             -serial file:$LOG \
+            -d int,cpu_reset -D "$DEBUG" \
             -display none -monitor none -no-reboot -no-shutdown
           status=$?
           set -e
           cat "$LOG" || true
+          tail -n 500 "$DEBUG" || true
           if [[ $status -ne 0 && $status -ne 124 ]]; then
             echo "QEMU exit status $status" >&2
             exit "$status"
@@ -144,5 +148,6 @@ jobs:
           if-no-files-found: warn
           path: |
             stage1f-integrated/qemu-stage1f-integrated.log
+            stage1f-integrated/qemu-stage1f-int.log
             stage1f-integrated/turbo-kernel.elf
             stage1f-integrated/turbo-stage1f-integrated.iso
