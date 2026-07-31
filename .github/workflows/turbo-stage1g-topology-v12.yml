@@ -1,0 +1,108 @@
+name: TURBO Stage-1G Topology Native Runtime
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qemu-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install official QEMU and GRUB
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 xz-utils zstd grub-pc-bin grub-common xorriso mtools
+          qemu-system-x86_64 --version
+
+      - name: Restore exact Stage-1G topology ELF
+        run: |
+          set -euo pipefail
+          B=stage1f-integrated
+          N=stage1g-topology
+          cat "$B"/kernel.part.* | base64 -d > "$N"/old.elf.xz
+          echo '1c11a60acad502023c1e91aa9d92a3f4c4be730ba9e27c55a02d22238594b6d2  stage1g-topology/old.elf.xz' | sha256sum -c -
+          xz -dc "$N"/old.elf.xz > "$N"/old.elf
+          tr -d '[:space:]' < "$B"/kernel-stack-fix.zpatch.b64 | base64 -d > "$N"/p1
+          zstd -d --patch-from="$N"/old.elf "$N"/p1 -o "$N"/k1.elf
+          echo 'b2328b86c496d5cd53199ece697932a03108f8ccb7ec992239978dd8f070e7c7  stage1g-topology/k1.elf' | sha256sum -c -
+          tr -d '[:space:]' < "$B"/kernel-idle-guard-fix.zpatch.b64 | base64 -d > "$N"/p2
+          zstd -d --patch-from="$N"/k1.elf "$N"/p2 -o "$N"/k2.elf
+          echo 'c2bb5922fee670c4eea81892fa9796eb12a289d419fe5c7a29fbc8b89208576d  stage1g-topology/k2.elf' | sha256sum -c -
+          cat "$B"/kernel-canonical-idle-fix.part.* | tr -d '[:space:]' | base64 -d > "$N"/p3
+          zstd -d --patch-from="$N"/k2.elf "$N"/p3 -o "$N"/v11.elf
+          echo '23e245e581e2b7ae0e35a183db12ffba34e0a322aca64beb0e7281cc2f9a8a94  stage1g-topology/v11.elf' | sha256sum -c -
+          tr -d '[:space:]' < "$N"/kernel-stage1g-topology-v12.zpatch.b64 | base64 -d > "$N"/p4
+          echo '4f1b5aef25e541365b7197dd17828c7a0bc76669cc9d859b76d19e5a0b6335e8  stage1g-topology/p4' | sha256sum -c -
+          zstd -d --patch-from="$N"/v11.elf "$N"/p4 -o "$N"/turbo-kernel.elf
+          echo '825b39fc3afb3481db2fa7853d81600a9b2a0cd20b8775b9e07152f7aa2138e4  stage1g-topology/turbo-kernel.elf' | sha256sum -c -
+          readelf -h "$N"/turbo-kernel.elf
+
+      - name: Build trusted Multiboot2 ISO
+        run: |
+          set -euo pipefail
+          D=stage1g-topology
+          mkdir -p "$D"/iso/boot/grub
+          cp "$D"/turbo-kernel.elf "$D"/iso/boot/turbo-kernel.elf
+          printf '%s\n' 'set timeout=0' 'set default=0' 'menuentry "TURBO META OS Stage-1G Topology Native" {' ' multiboot2 /boot/turbo-kernel.elf' ' boot' '}' > "$D"/iso/boot/grub/grub.cfg
+          grub-mkrescue -o "$D"/turbo-stage1g.iso "$D"/iso >/dev/null
+
+      - name: Real 4-vCPU QEMU topology gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          D=stage1g-topology
+          LOG="$D/qemu-stage1g.log"
+          DBG="$D/qemu-stage1g-int.log"
+          : > "$LOG"
+          : > "$DBG"
+          set +e
+          timeout 20s qemu-system-x86_64 -m 256M -smp 4 -machine q35,accel=tcg -cpu max -device virtio-serial-pci -cdrom "$D/turbo-stage1g.iso" -boot d -serial file:"$LOG" -d int,cpu_reset -D "$DBG" -display none -monitor none -no-reboot -no-shutdown
+          status=$?
+          set -e
+          cat "$LOG"
+          [[ $status -eq 0 || $status -eq 124 ]]
+          required=(
+            TURBO_RUNTIME_WX_PASS
+            TURBO_SMP_ONLINE_COUNT=4
+            TURBO_TLB_SHOOTDOWN_PASS
+            TURBO_STAGE1G_TOPOLOGY_CORE_READY
+            TURBO_TOPOLOGY_FABRIC_READY
+            TURBO_TOPOLOGY_K6_READY
+            TURBO_TOPOLOGY_LOCALITY_SCHEDULER_READY
+            TURBO_TOPOLOGY_EDGE_ISOLATION_PASS
+            TURBO_TOPOLOGY_NATIVE_IO_PASS
+            TURBO_RING3_RAMFS_ELF_PASS
+            TURBO_RING3_RAMFS_CLIENT_E2E_PASS
+            TURBO_RING3_VIRTIO_MODERN_TRANSPORT_PASS
+            TURBO_LINUX_WRITE_PASS
+            TURBO_LINUX_MMAP_PASS
+            TURBO_LINUX_MUNMAP_PASS
+            TURBO_LINUX_BRK_PASS
+            TURBO_LINUX_EXIT_PASS
+            TURBO_STAGE1G_TOPOLOGY_NATIVE_COMPLETE
+          )
+          for marker in "${required[@]}"; do
+            grep -Fq "$marker" "$LOG" || { echo "missing marker: $marker" >&2; exit 1; }
+          done
+          [[ $(grep -Fc TURBO_PROCESS_TEARDOWN_PASS "$LOG" || true) -eq 6 ]]
+          ! grep -Fq '[TURBO PANIC]' "$LOG"
+          ! grep -Fq '[TURBO EXCEPTION]' "$LOG"
+          echo TURBO_QEMU_STAGE1G_TOPOLOGY_NATIVE_PASS | tee -a "$LOG"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-stage1g-topology-native-evidence
+          path: |
+            stage1g-topology/qemu-stage1g.log
+            stage1g-topology/qemu-stage1g-int.log
+            stage1g-topology/turbo-kernel.elf
+            stage1g-topology/turbo-stage1g.iso
