@@ -1,0 +1,111 @@
+name: TURBO Stage-1F Integrated Runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'stage1f-integrated/**'
+      - '.github/workflows/turbo-stage1f-integrated-v10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qemu-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install official QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 xz-utils
+          qemu-system-x86_64 --version
+
+      - name: Restore exact release ELF
+        run: |
+          set -euo pipefail
+          echo '303116db712b849e137b57e1c7788e95f7b50bac045beb580d9e32e5bf111ed0  stage1f-integrated/turbo-kernel.elf.xz' | sha256sum -c -
+          xz -dc stage1f-integrated/turbo-kernel.elf.xz > stage1f-integrated/turbo-kernel.elf
+          echo 'cdffdd415402c10874969292d2e648c9dc0a3fd5703b24e08a5d1c9fc0025ea3  stage1f-integrated/turbo-kernel.elf' | sha256sum -c -
+          readelf -h stage1f-integrated/turbo-kernel.elf
+
+      - name: Real 4-vCPU QEMU runtime
+        id: qemu
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG=stage1f-integrated/qemu-stage1f-integrated.log
+          set +e
+          timeout 35s qemu-system-x86_64 \
+            -m 256M -smp 4 \
+            -machine q35,accel=tcg \
+            -cpu max \
+            -device virtio-serial-pci \
+            -kernel stage1f-integrated/turbo-kernel.elf \
+            -serial file:$LOG \
+            -display none -monitor none -no-reboot -no-shutdown
+          status=$?
+          set -e
+          cat "$LOG" || true
+          if [[ $status -ne 0 && $status -ne 124 ]]; then
+            echo "QEMU exit status $status" >&2
+            exit "$status"
+          fi
+
+          required=(
+            TURBO_RUNTIME_WX_PASS
+            TURBO_LAPIC_IOAPIC_READY
+            TURBO_LAPIC_TIMER_CALIBRATED
+            TURBO_SMP_ONLINE_COUNT=4
+            TURBO_SMP_PERCPU_READY
+            TURBO_PROCESS_SCHEDULER_CPUS=4
+            TURBO_TLB_SHOOTDOWN_PASS
+            TURBO_BLOCKING_IPC_READY
+            TURBO_SERVICE_REGISTRY_READY
+            TURBO_STAGE1F_INTEGRATED_CORE_READY
+            TURBO_MEMORY_OBJECT_SYSCALL_ABI_READY
+            TURBO_IPC_CAP_TRANSFER_READY
+            TURBO_STRICT_ELF64_LOADER_READY
+            TURBO_RING3_VFS_ELF_LOADER_READY
+            TURBO_UNIVERSAL_PROCESS_TEARDOWN_READY
+            TURBO_AP_VIRTUAL_GUARD_STACKS_READY
+            TURBO_RAMFS_NAMESPACE_CORE_READY
+            TURBO_VFS_REQUEST_REPLY_READY
+            TURBO_LINUX_ELF_PERSONALITY_INTEGRATED
+            TURBO_RING3_INIT_READY_PASS
+            TURBO_ADDRESS_SPACE_ISOLATION_OK
+            TURBO_USERSPACE_CONSOLE_IPC_PASS
+            TURBO_RING3_CAP_TRANSFER_MEMORY_PASS
+            TURBO_RING3_RAMFS_ELF_PASS
+            TURBO_RING3_RAMFS_CLIENT_E2E_PASS
+            TURBO_RING3_MEMORY_OBJECT_ABI_PASS
+            TURBO_RING3_VIRTIO_MODERN_TRANSPORT_PASS
+            TURBO_LINUX_ELF_LOADED
+            TURBO_LINUX_PERSONALITY_READY
+            TURBO_LINUX_WRITE_PASS
+            TURBO_LINUX_MMAP_PASS
+            TURBO_LINUX_MUNMAP_PASS
+            TURBO_LINUX_BRK_PASS
+            TURBO_LINUX_EXIT_PASS
+            TURBO_PREEMPTIVE_TIMER_PASS
+            TURBO_STAGE1F_INTEGRATED_COMPLETE
+          )
+          for marker in "${required[@]}"; do
+            grep -Fq "$marker" "$LOG" || { echo "missing marker: $marker" >&2; exit 1; }
+          done
+          [[ $(grep -Fc 'TURBO_PROCESS_TEARDOWN_PASS' "$LOG" || true) -eq 6 ]] || { echo 'expected 6 teardown markers' >&2; exit 1; }
+          ! grep -Fq '[TURBO PANIC]' "$LOG" || { echo 'kernel panic detected' >&2; exit 1; }
+          echo 'TURBO_QEMU_STAGE1F_INTEGRATED_PASS' | tee -a "$LOG"
+
+      - name: Upload runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-stage1f-integrated-runtime-evidence
+          if-no-files-found: warn
+          path: |
+            stage1f-integrated/qemu-stage1f-integrated.log
+            stage1f-integrated/turbo-kernel.elf
