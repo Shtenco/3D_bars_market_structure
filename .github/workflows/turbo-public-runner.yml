@@ -1,0 +1,19 @@
+name: TURBO Public Runner Probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'stage1f-public/**'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          uname -a
+          echo TURBO_PUBLIC_RUNNER_READY
