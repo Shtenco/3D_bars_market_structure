@@ -59,8 +59,13 @@ jobs:
 
           tr -d '[:space:]' < "$I"/v14-device-elf-loader-fix.zpatch.b64 | base64 -d > "$I"/p7
           echo '86c01793ad3325e10a238bc533cab68d32f0350d1a0068ca76ecb75d5c629f16  stage1i-xpu/p7' | sha256sum -c -
-          zstd -d --patch-from="$I"/v14-pre.elf "$I"/p7 -o "$I"/turbo-kernel.elf
-          echo 'd7529750fe7c307bdc7f00f14b41b289d0d9533718b8b0265e319b0505357440  stage1i-xpu/turbo-kernel.elf' | sha256sum -c -
+          zstd -d --patch-from="$I"/v14-pre.elf "$I"/p7 -o "$I"/v14-loader.elf
+          echo 'd7529750fe7c307bdc7f00f14b41b289d0d9533718b8b0265e319b0505357440  stage1i-xpu/v14-loader.elf' | sha256sum -c -
+
+          tr -d '[:space:]' < "$I"/v14-optional-cap-fix.zpatch.b64 | base64 -d > "$I"/p8
+          echo 'c37ad823a1d086e676f427028829759fac041b3cddfdd06345dfd68212e4fd3c  stage1i-xpu/p8' | sha256sum -c -
+          zstd -d --patch-from="$I"/v14-loader.elf "$I"/p8 -o "$I"/turbo-kernel.elf
+          echo '0bf3ffdd9ad2dd2ef2502ebb621c5d2613b553e069f7a7a0b535f11805c083ca  stage1i-xpu/turbo-kernel.elf' | sha256sum -c -
 
           tr -d '[:space:]' < "$I"/xpu-sector.img.b64 | base64 -d > "$I"/xpu-sector.img
           echo 'd2a2267c7bb7490d36e5a439c1afc7b6d56fb458c892cb38ddc3eaa0879106b3  stage1i-xpu/xpu-sector.img' | sha256sum -c -
