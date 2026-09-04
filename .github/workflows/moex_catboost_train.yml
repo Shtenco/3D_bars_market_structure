@@ -1,5 +1,6 @@
 name: MOEX Unified CatBoost Research
 
+# Research-only workflow on the isolated MOEX training branch.
 on:
   push:
     branches:
