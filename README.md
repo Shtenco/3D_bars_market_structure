@@ -95,3 +95,30 @@ flowchart LR
 README не должен утверждать больше, чем подтверждают код, тесты и сохранённые артефакты. Для рыночных/экономических проектов backtest или внутренняя переоценка не равны реализованной внешней прибыли; для AI/infra проектов benchmark или диаграмма не равны production-надежности.
 
 <!-- SYNERGY-FEDERATION-PASSPORT:END -->
+
+---
+
+# 📊 Глубокий доказательный паспорт 3D Market Structure
+
+## Реальность `main`
+
+В repo фактически один Python implementation file и workflow. Поэтому исторические README-claims вроде `97% accuracy` и `3–5 bars early` нужно считать **legacy claims**, пока они не воспроизведены на frozen dataset с сохранённым report.
+
+```mermaid
+flowchart LR
+    MT5[MT5 bars/ticks] --> VTP[Volume-Time-Price representation]
+    VTP --> CLUST[Cluster/reversal detector]
+    CLUST --> SIGNAL[Signal]
+    SIGNAL --> OOS[Required OOS validation]
+```
+
+## Promotion gate
+
+- exact dataset + timestamps;
+- causal construction without future volume leakage;
+- class-balance and event definition;
+- baseline vs simpler 2D/volume features;
+- untouched OOS;
+- transaction-cost simulation if trading value is claimed.
+
+До этого repo — valuable representation R&D, но не validated 97%-accuracy system.
