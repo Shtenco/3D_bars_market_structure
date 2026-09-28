@@ -60,3 +60,38 @@ class Bar3D:
         self.momentum = None
         self.volatility = None
         self.spread = None
+
+
+<!-- SYNERGY-FEDERATION-PASSPORT:START -->
+---
+
+## 🧭 SYNERGY federation passport
+
+**Домен:** 📊 Market structure R&D  
+**Архитектурный родитель:** [`synergy_midas_ai`](https://github.com/Shtenco/synergy_midas_ai)  
+**Архитектурный корень:** [`synergy_system`](https://github.com/Shtenco/synergy_system)
+
+```mermaid
+flowchart LR
+    SYS[🧭 synergy_system] --> P[synergy_midas_ai]
+    P --> THIS[3D_bars_market_structure]
+    THIS --> E[📦 Evidence / outputs]
+```
+
+Связь выше показывает место в федерации и **не является доказательством runtime dependency**. Фактические зависимости должны подтверждаться импортами, API-контрактами, manifests, deployment-конфигурацией или тестами.
+
+### Единая шкала доказательности
+
+`GREEN` = воспроизводимо подтверждено · `CANDIDATE` = реализация есть, доказательство неполное · `R&D` = эксперимент · `STUB` = архитектурный узел · `LEGACY` = provenance.
+
+### Навигация
+
+- [📚 Атлас всех 75 репозиториев](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
+- [🧾 Машиночитаемый registry](https://github.com/Shtenco/synergy_system/blob/main/registry/SYNERGY_REPOSITORIES.json)
+- [🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
+
+### Общее правило утверждений
+
+README не должен утверждать больше, чем подтверждают код, тесты и сохранённые артефакты. Для рыночных/экономических проектов backtest или внутренняя переоценка не равны реализованной внешней прибыли; для AI/infra проектов benchmark или диаграмма не равны production-надежности.
+
+<!-- SYNERGY-FEDERATION-PASSPORT:END -->
