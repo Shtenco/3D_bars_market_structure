@@ -1,124 +1,243 @@
-# 3D Market Structure: Real-Time Volume-Time-Price Bars & Reversal Pattern Detection
+# 🧊 3D Bars Market Structure — verified legacy research dossier
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue)](https://python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![MetaTrader 5](https://img.shields.io/badge/MetaTrader%205-API-orange)](https://mql5.com)
-[![Plotly](https://img.shields.io/badge/Plotly-Interactive%203D-yellow)](https://plotly.com)
-[![Pandas](https://img.shields.io/badge/Pandas-Data%20Processing-red)](https://pandas.pydata.org)
+> **Статус:** 🕰️ LEGACY / 🔬 R&D visualization-feature prototype.
+> **Проверено по фактическому Python source:** 29.09.2026.
+> **Важно:** название “3D Renko” историческое; current core строит transformed stationary-like features и visualizations, а не классический price-brick Renko engine.
 
-> **MetaTrader 5 — Integration | December 4, 2024 at 14:24**  
-> **18,124 views • 42 comments**  
-> **Author:** [Yevgeniy Koshtenko](https://mql5.com/en/users/koshtenko)
+## 1. 🎯 Задача
 
----
+Repository исследует преобразование MT5 OHLCV/tick-volume data в многомерные market features и 3D/interactive visualization.
 
-## What Is This?
+Main function:
 
-**3D Market Structure** — the **first open-source system** that:
-- Builds **real 3D bars** where **X = time**, **Y = price**, **Z = volume**
-- Detects **"yellow clusters"** — high-volume reversal zones with **97% accuracy**
-- Runs **live in MetaTrader 5** via Python API
-- Generates **interactive 3D dashboards**, **reversal signals**, and **backtest reports**
+`create_true_3d_renko(...)`
 
-> **Result**: See market microstructure in **true 3D** — spot reversals **3–5 bars early**
+по факту создаёт feature blocks на rolling 20-bar window.
 
----
+## 2. 📦 Фактический состав
 
-## The Hidden Truth of 2D Charts
+```text
+3D_bars_market_structure/
+├── 3D_bars_market_structure.py
+├── README.md
+└── .github/
+```
 
-> **We trade a 3D market on 2D screens.**
+Основная логика находится в одном Python script (~20 KB).
 
-Traditional candles show **price vs time**.  
-Volume is a **separate histogram**.  
-**No chart shows how volume flows through price levels over time.**
+Dependencies imported directly in source include:
 
-**3D Bars fix this.**  
-Each bar is a **voxel** in 3D space:
-- **Height** = price range
-- **Width** = time duration
-- **Depth** = volume concentration
+- MetaTrader5;
+- pandas/numpy;
+- sklearn MinMaxScaler;
+- scipy.stats;
+- matplotlib/seaborn/mplfinance;
+- Plotly.
 
-Two identical 2D candles can have **radically different 3D structures**:
-- One: deep, stable volume → **strong trend**
-- Other: thin, shallow → **false breakout**
+## 3. 📥 Market data input
 
----
+Source calls:
 
-## The Mathematical Engine
-
-### 3D Bar Construction (7D → 3D Voxel)
 ```python
-class Bar3D:
-    def __init__(self):
-        self.time_start = None
-        self.time_end = None
-        self.price_open = None
-        self.price_high = None
-        self.price_low = None
-        self.price_close = None
-        self.volume_profile = {}  # price_level → volume
-        self.momentum = None
-        self.volatility = None
-        self.spread = None
+mt5.copy_rates_range(symbol,timeframe,start_date,end_date)
+```
 
+and reads symbol spread/point via `mt5.symbol_info`.
 
-<!-- SYNERGY-FEDERATION-PASSPORT:START -->
----
+The function drops missing rows and requires valid positive derived brick size:
 
-## 🧭 SYNERGY federation passport
+[
+minPriceBrick=
+spread	imes multiplier	imes point
+]
 
-**Домен:** 📊 Market structure R&D  
-**Архитектурный родитель:** [`synergy_midas_ai`](https://github.com/Shtenco/synergy_midas_ai)  
-**Архитектурный корень:** [`synergy_system`](https://github.com/Shtenco/synergy_system)
+Но далее этот `min_price_brick` returned as metadata and is not used to construct classical Renko price bricks.
+
+## 4. 🧠 Feature construction
+
+For each rolling window, source derives:
+
+### Time
+[
+sin(2pi hour/24),quad cos(2pi hour/24)
+]
+
+### Price
+- typical price;
+- percentage return;
+- return acceleration.
+
+### Volume
+- tick-volume change;
+- volume acceleration.
+
+### Volatility
+- rolling 20 return std;
+- volatility percentage change.
+
+Each block maps transformed values into fields named `open/high/low/close/tick_volume`.
+
+Therefore those OHLC-like field names **do not represent original OHLC prices** after transformation.
+
+## 5. 🚨 Important scaling issue
+
+Inside the per-row loop:
+
+```python
+time_numeric = scaler.fit_transform([[single_value]]).item()
+```
+
+A MinMaxScaler fitted on one scalar has no cross-time range to learn. This destroys meaningful relative time information at that stage.
+
+Later all non-time/non-direction features are scaled again across the result frame.
+
+The README therefore treats current `time_numeric` implementation as a validation blocker, not a validated temporal coordinate.
+
+## 6. 📊 Additional derived features
+
+After blocks are built:
+
+- MA5/MA20 over transformed close;
+- volume MA5;
+- rolling price/volume volatility;
+- trend strength;
+- z-score price;
+- z-score volume.
+
+Then another MinMax scaling is applied.
+
+This means visualization axes are largely normalized feature space, not raw price/volume units.
+
+## 7. 🖼️ Visualization outputs
+
+Source creates:
+
+- Plotly 3D scatter;
+- candlestick-like panel;
+- MA100 smoothed overlays;
+- multi-panel smoothed analysis;
+- Matplotlib 3D bars;
+- trend/volume/volatility charts;
+- HTML outputs.
+
+Important claim boundary: the panel named “Original Price” is fed transformed `open/high/low/close` fields from the result DataFrame, not the raw MT5 OHLC frame. It should not be described as literal original price without repair.
+
+## 8. 🏗️ Architecture
 
 ```mermaid
 flowchart LR
-    SYS[🧭 synergy_system] --> P[synergy_midas_ai]
-    P --> THIS[3D_bars_market_structure]
-    THIS --> E[📦 Evidence / outputs]
+    MT5[MT5 OHLCV] --> RAW[Raw frame]
+    RAW --> F[Returns / accel / volume / vol / cyclic time]
+    F --> W[20-bar feature blocks]
+    W --> SCALE[MinMax scaling]
+    SCALE --> STAT[MA / z-score / volatility]
+    STAT --> VIZ[3D + Plotly/HTML charts]
 ```
 
-Связь выше показывает место в федерации и **не является доказательством runtime dependency**. Фактические зависимости должны подтверждаться импортами, API-контрактами, manifests, deployment-конфигурацией или тестами.
+## 9. 🛡️ Claim boundaries
 
-### Единая шкала доказательности
+```text
+3D visualization != predictive edge
+normalized close  != market close
+feature block      != Renko brick
+price direction    != trade signal
+pretty structure   != stationary process proof
+in-sample plot     != OOS validation
+```
 
-`GREEN` = воспроизводимо подтверждено · `CANDIDATE` = реализация есть, доказательство неполное · `R&D` = эксперимент · `STUB` = архитектурный узел · `LEGACY` = provenance.
+## 10. ⚠️ Methodological risks
 
-### Навигация
+- repeated scaling can obscure units;
+- feature labels reuse OHLC names;
+- time scaler issue described above;
+- percentage changes can produce inf/NaN around zero;
+- no dedicated train/test protocol;
+- no prediction target in core transformation;
+- no automated test suite visible in root;
+- MT5 data provenance/version not preserved.
 
-- [📚 Атлас всех 75 репозиториев](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
-- [🧾 Машиночитаемый registry](https://github.com/Shtenco/synergy_system/blob/main/registry/SYNERGY_REPOSITORIES.json)
-- [🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
+## 11. 🧪 Required repair tests
 
-### Общее правило утверждений
+1. preserve raw OHLC separately;
+2. rename transformed dimensions honestly;
+3. fit temporal scaler across window/dataset, not one value;
+4. assert no NaN/inf after transform;
+5. deterministic fixture data;
+6. exact feature-value unit tests;
+7. compare with classical Renko if “Renko” retained;
+8. remove lookahead if downstream model added;
+9. freeze preprocessing parameters on train only;
+10. OOS predictive test separately from visualization.
 
-README не должен утверждать больше, чем подтверждают код, тесты и сохранённые артефакты. Для рыночных/экономических проектов backtest или внутренняя переоценка не равны реализованной внешней прибыли; для AI/infra проектов benchmark или диаграмма не равны production-надежности.
+## 12. 🛠️ Reproducibility
 
-<!-- SYNERGY-FEDERATION-PASSPORT:END -->
+Expected environment needs a working MetaTrader 5 terminal plus Python dependencies.
+
+A reproducible future run should record:
+
+- symbol;
+- timeframe;
+- start/end;
+- broker/source;
+- raw data hash;
+- spread/point;
+- package versions;
+- generated artifact hashes.
+
+Without a requirements/lock file, exact dependency reproducibility is currently incomplete.
+
+## 13. 🗺️ Repository map
+
+| Path | Role |
+|---|---|
+| `3D_bars_market_structure.py` | all feature/visualization logic |
+| `README.md` | verified technical dossier |
+| `.github/` | automation metadata |
+| tests | ❌ no dedicated test tree observed |
+| evidence | ❌ no formal benchmark evidence tree |
+
+## 14. 🔗 Место в SYNERGY
+
+This is legacy market-structure R&D. Outputs should enter modern systems only as versioned research features after parity/tests, potentially through:
+
+- MarketVision;
+- QuantLab;
+- MIDAS research.
+
+It does not have execution authority.
+
+## 15. 📊 Evidence maturity
+
+| Layer | Status |
+|---|---|
+| MT5 data retrieval code | ✅ |
+| multidimensional feature code | ✅ |
+| visualization generation | ✅ |
+| classical Renko parity | ❌ |
+| feature correctness tests | ❌ |
+| preprocessing freeze | ❌ |
+| OOS alpha evidence | ❌ |
+| production trading | ❌ |
+
+## 16. 🚀 Roadmap
+
+- repair temporal scaling;
+- rename dimensions;
+- add requirements lock;
+- unit tests;
+- raw/transformed dual data structure;
+- classical Renko baseline;
+- OOS downstream benchmark;
+- migrate useful feature logic to typed modern contract.
+
+## 17. 🛑 Что project НЕ утверждает
+
+- that features are truly stationary;
+- that visualization predicts price;
+- that transformed OHLC is original market OHLC;
+- that this is a validated Renko implementation;
+- that any chart implies profitable trading.
 
 ---
 
-# 📊 Глубокий доказательный паспорт 3D Market Structure
-
-## Реальность `main`
-
-В repo фактически один Python implementation file и workflow. Поэтому исторические README-claims вроде `97% accuracy` и `3–5 bars early` нужно считать **legacy claims**, пока они не воспроизведены на frozen dataset с сохранённым report.
-
-```mermaid
-flowchart LR
-    MT5[MT5 bars/ticks] --> VTP[Volume-Time-Price representation]
-    VTP --> CLUST[Cluster/reversal detector]
-    CLUST --> SIGNAL[Signal]
-    SIGNAL --> OOS[Required OOS validation]
-```
-
-## Promotion gate
-
-- exact dataset + timestamps;
-- causal construction without future volume leakage;
-- class-balance and event definition;
-- baseline vs simpler 2D/volume features;
-- untouched OOS;
-- transaction-cost simulation if trading value is claimed.
-
-До этого repo — valuable representation R&D, но не validated 97%-accuracy system.
+[🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system) · [📚 Atlas](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
