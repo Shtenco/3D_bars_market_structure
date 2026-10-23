@@ -33,13 +33,13 @@ The presence of source code proves implementation artifacts, **not** reproducibl
 
 ---
 
-# 🧊 3D Bars Market Structure — verified legacy research dossier
+#  3D Bars Market Structure — verified legacy research dossier
 
-> **Статус:** 🕰️ LEGACY / 🔬 R&D visualization-feature prototype.
+> **Статус:**  LEGACY /  R&D visualization-feature prototype.
 > **Проверено по фактическому Python source:** 29.09.2026.
 > **Важно:** название “3D Renko” историческое; current core строит transformed stationary-like features и visualizations, а не классический price-brick Renko engine.
 
-## 1. 🎯 Задача
+## 1.  Задача
 
 Repository исследует преобразование MT5 OHLCV/tick-volume data в многомерные market features и 3D/interactive visualization.
 
@@ -49,7 +49,7 @@ Main function:
 
 по факту создаёт feature blocks на rolling 20-bar window.
 
-## 2. 📦 Фактический состав
+## 2.  Фактический состав
 
 ```text
 3D_bars_market_structure/
@@ -69,7 +69,7 @@ Dependencies imported directly in source include:
 - matplotlib/seaborn/mplfinance;
 - Plotly.
 
-## 3. 📥 Market data input
+## 3.  Market data input
 
 Source calls:
 
@@ -88,7 +88,7 @@ spread	imes multiplier	imes point
 
 Но далее этот `min_price_brick` returned as metadata and is not used to construct classical Renko price bricks.
 
-## 4. 🧠 Feature construction
+## 4.  Feature construction
 
 For each rolling window, source derives:
 
@@ -114,7 +114,7 @@ Each block maps transformed values into fields named `open/high/low/close/tick_v
 
 Therefore those OHLC-like field names **do not represent original OHLC prices** after transformation.
 
-## 5. 🚨 Important scaling issue
+## 5.  Important scaling issue
 
 Inside the per-row loop:
 
@@ -128,7 +128,7 @@ Later all non-time/non-direction features are scaled again across the result fra
 
 The README therefore treats current `time_numeric` implementation as a validation blocker, not a validated temporal coordinate.
 
-## 6. 📊 Additional derived features
+## 6.  Additional derived features
 
 After blocks are built:
 
@@ -143,7 +143,7 @@ Then another MinMax scaling is applied.
 
 This means visualization axes are largely normalized feature space, not raw price/volume units.
 
-## 7. 🖼️ Visualization outputs
+## 7.  Visualization outputs
 
 Source creates:
 
@@ -157,7 +157,7 @@ Source creates:
 
 Important claim boundary: the panel named “Original Price” is fed transformed `open/high/low/close` fields from the result DataFrame, not the raw MT5 OHLC frame. It should not be described as literal original price without repair.
 
-## 8. 🏗️ Architecture
+## 8.  Architecture
 
 ```mermaid
 flowchart LR
@@ -169,7 +169,7 @@ flowchart LR
     STAT --> VIZ[3D + Plotly/HTML charts]
 ```
 
-## 9. 🛡️ Claim boundaries
+## 9.  Claim boundaries
 
 ```text
 3D visualization != predictive edge
@@ -180,7 +180,7 @@ pretty structure   != stationary process proof
 in-sample plot     != OOS validation
 ```
 
-## 10. ⚠️ Methodological risks
+## 10.  Methodological risks
 
 - repeated scaling can obscure units;
 - feature labels reuse OHLC names;
@@ -191,7 +191,7 @@ in-sample plot     != OOS validation
 - no automated test suite visible in root;
 - MT5 data provenance/version not preserved.
 
-## 11. 🧪 Required repair tests
+## 11.  Required repair tests
 
 1. preserve raw OHLC separately;
 2. rename transformed dimensions honestly;
@@ -204,7 +204,7 @@ in-sample plot     != OOS validation
 9. freeze preprocessing parameters on train only;
 10. OOS predictive test separately from visualization.
 
-## 12. 🛠️ Reproducibility
+## 12.  Reproducibility
 
 Expected environment needs a working MetaTrader 5 terminal plus Python dependencies.
 
@@ -221,17 +221,17 @@ A reproducible future run should record:
 
 Without a requirements/lock file, exact dependency reproducibility is currently incomplete.
 
-## 13. 🗺️ Repository map
+## 13.  Repository map
 
 | Path | Role |
 |---|---|
 | `3D_bars_market_structure.py` | all feature/visualization logic |
 | `README.md` | verified technical dossier |
 | `.github/` | automation metadata |
-| tests | ❌ no dedicated test tree observed |
-| evidence | ❌ no formal benchmark evidence tree |
+| tests |  no dedicated test tree observed |
+| evidence |  no formal benchmark evidence tree |
 
-## 14. 🔗 Место в SYNERGY
+## 14.  Место в SYNERGY
 
 This is legacy market-structure R&D. Outputs should enter modern systems only as versioned research features after parity/tests, potentially through:
 
@@ -241,20 +241,20 @@ This is legacy market-structure R&D. Outputs should enter modern systems only as
 
 It does not have execution authority.
 
-## 15. 📊 Evidence maturity
+## 15.  Evidence maturity
 
 | Layer | Status |
 |---|---|
-| MT5 data retrieval code | ✅ |
-| multidimensional feature code | ✅ |
-| visualization generation | ✅ |
-| classical Renko parity | ❌ |
-| feature correctness tests | ❌ |
-| preprocessing freeze | ❌ |
-| OOS alpha evidence | ❌ |
-| production trading | ❌ |
+| MT5 data retrieval code |  |
+| multidimensional feature code |  |
+| visualization generation |  |
+| classical Renko parity |  |
+| feature correctness tests |  |
+| preprocessing freeze |  |
+| OOS alpha evidence |  |
+| production trading |  |
 
-## 16. 🚀 Roadmap
+## 16.  Roadmap
 
 - repair temporal scaling;
 - rename dimensions;
@@ -265,7 +265,7 @@ It does not have execution authority.
 - OOS downstream benchmark;
 - migrate useful feature logic to typed modern contract.
 
-## 17. 🛑 Что project НЕ утверждает
+## 17.  Что project НЕ утверждает
 
 - that features are truly stationary;
 - that visualization predicts price;
@@ -275,4 +275,4 @@ It does not have execution authority.
 
 ---
 
-[🧭 SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system) · [📚 Atlas](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
+[ SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system) · [ Atlas](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
