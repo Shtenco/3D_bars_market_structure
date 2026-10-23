@@ -1,278 +1,126 @@
 <div align="center">
 
-<img src="assets/readme/hero.svg" width="100%" alt="3D MARKET STRUCTURE project vector identity"/>
+<img src="assets/readme/hero.svg" width="100%" alt="Market Structure — multidimensional market features" />
 
-**MT5 bar-to-feature transformation with 3D visualization**
+**MARKET STRUCTURE / MULTI-FACTOR 3D**
 
-[Overview](#engineering-overview) · [Architecture](#architecture-and-data-flow) · [Evidence](#validation-boundaries) · [Original technical dossier](#original-technical-dossier)
+Исследование геометрии рыночных признаков, преобразования ценовых, временных и объёмных рядов и интерактивной визуализации.
+
+[Исследование](#научная-задача) · [Код](#фактическая-архитектура) · [Математика](#математическая-модель) · [Аудит](#выводы-аудита) · [Воспроизведение](#запуск-и-артефакты)
 
 </div>
 
-## Engineering overview
+> **Статус: исследовательская визуализация, не настоящий Renko и не подтверждённая ML-модель.** Существуют трансформация MT5-баров, несколько графических представлений и выгрузка CSV; валидированные торговые сигналы, независимый OOS и экономическая эффективность не показаны.
 
-MT5 bar-to-feature transformation with 3D visualization. Primary code entry points: `3D_bars_market_structure.py`. This GitHub repository contains research assets and must not be interpreted as independently audited financial performance or production service.
+## Научная задача
 
-## Architecture and data flow
+Рыночное состояние удобнее изучать не только как график цены, но как совместную динамику относительного движения, изменения активности и волатильности. Исходный код создаёт многомерные признаки для EURUSD и GBPUSD, строит интерактивные Plotly-диаграммы и сохраняет локальную визуальную отчётность. Такое представление может применяться в исследовательских лабораториях для анализа режимов, диагностики аномалий и построения последующих ML-признаков. Его нельзя позиционировать как готовый прибыльный индикатор.
 
-```mermaid
-flowchart LR
- I[Market and input data] --> R[Research implementations]
- R --> O[Features, decisions or visualizations]
- O --> V[Independent validation required]
-```
+<img src="assets/readme/feature-pipeline.svg" width="100%" alt="Реальный конвейер формирования рыночных признаков" />
 
-The graph illustrates research responsibilities, not validated real-time connectivity.
+## Фактическая архитектура
 
-## Validation boundaries
-
-> The feature transformation is not conventional Renko; a per-value time scaler undermines temporal comparability.
-
-The presence of source code proves implementation artifacts, **not** reproducible predictive superiority, live trading or investor returns. Validate dataset timing, splits, costs, model versions and results separately.
-
-## Original technical dossier
-
----
-
-#  3D Bars Market Structure — verified legacy research dossier
-
-> **Статус:**  LEGACY /  R&D visualization-feature prototype.
-> **Проверено по фактическому Python source:** 29.09.2026.
-> **Важно:** название “3D Renko” историческое; current core строит transformed stationary-like features и visualizations, а не классический price-brick Renko engine.
-
-## 1.  Задача
-
-Repository исследует преобразование MT5 OHLCV/tick-volume data в многомерные market features и 3D/interactive visualization.
-
-Main function:
-
-`create_true_3d_renko(...)`
-
-по факту создаёт feature blocks на rolling 20-bar window.
-
-## 2.  Фактический состав
-
-```text
-3D_bars_market_structure/
-├── 3D_bars_market_structure.py
-├── README.md
-└── .github/
-```
-
-Основная логика находится в одном Python script (~20 KB).
-
-Dependencies imported directly in source include:
-
-- MetaTrader5;
-- pandas/numpy;
-- sklearn MinMaxScaler;
-- scipy.stats;
-- matplotlib/seaborn/mplfinance;
-- Plotly.
-
-## 3.  Market data input
-
-Source calls:
-
-```python
-mt5.copy_rates_range(symbol,timeframe,start_date,end_date)
-```
-
-and reads symbol spread/point via `mt5.symbol_info`.
-
-The function drops missing rows and requires valid positive derived brick size:
-
-[
-minPriceBrick=
-spread	imes multiplier	imes point
-]
-
-Но далее этот `min_price_brick` returned as metadata and is not used to construct classical Renko price bricks.
-
-## 4.  Feature construction
-
-For each rolling window, source derives:
-
-### Time
-[
-sin(2pi hour/24),quad cos(2pi hour/24)
-]
-
-### Price
-- typical price;
-- percentage return;
-- return acceleration.
-
-### Volume
-- tick-volume change;
-- volume acceleration.
-
-### Volatility
-- rolling 20 return std;
-- volatility percentage change.
-
-Each block maps transformed values into fields named `open/high/low/close/tick_volume`.
-
-Therefore those OHLC-like field names **do not represent original OHLC prices** after transformation.
-
-## 5.  Important scaling issue
-
-Inside the per-row loop:
-
-```python
-time_numeric = scaler.fit_transform([[single_value]]).item()
-```
-
-A MinMaxScaler fitted on one scalar has no cross-time range to learn. This destroys meaningful relative time information at that stage.
-
-Later all non-time/non-direction features are scaled again across the result frame.
-
-The README therefore treats current `time_numeric` implementation as a validation blocker, not a validated temporal coordinate.
-
-## 6.  Additional derived features
-
-After blocks are built:
-
-- MA5/MA20 over transformed close;
-- volume MA5;
-- rolling price/volume volatility;
-- trend strength;
-- z-score price;
-- z-score volume.
-
-Then another MinMax scaling is applied.
-
-This means visualization axes are largely normalized feature space, not raw price/volume units.
-
-## 7.  Visualization outputs
-
-Source creates:
-
-- Plotly 3D scatter;
-- candlestick-like panel;
-- MA100 smoothed overlays;
-- multi-panel smoothed analysis;
-- Matplotlib 3D bars;
-- trend/volume/volatility charts;
-- HTML outputs.
-
-Important claim boundary: the panel named “Original Price” is fed transformed `open/high/low/close` fields from the result DataFrame, not the raw MT5 OHLC frame. It should not be described as literal original price without repair.
-
-## 8.  Architecture
+Основной файл [`3D_bars_market_structure.py`](3D_bars_market_structure.py) содержит четыре функции: `create_true_3d_renko`, `create_interactive_3d`, `create_visualizations`, `main`. Функция `main` использует M15, две валютные пары и исторический диапазон 21 апреля — 10 августа 2023 года. Она создаёт каталоги `charts/`, отдельные графики и CSV.
 
 ```mermaid
 flowchart LR
-    MT5[MT5 OHLCV] --> RAW[Raw frame]
-    RAW --> F[Returns / accel / volume / vol / cyclic time]
-    F --> W[20-bar feature blocks]
-    W --> SCALE[MinMax scaling]
-    SCALE --> STAT[MA / z-score / volatility]
-    STAT --> VIZ[3D + Plotly/HTML charts]
+ MT5[MT5 M15 OHLCV] --> CALC[Relative changes and acceleration]
+ CALC --> WINDOWS[21-point rolling windows]
+ WINDOWS --> TRANSFORM[Renamed synthetic feature columns]
+ TRANSFORM --> NORMAL[Whole-sample MinMax transforms]
+ NORMAL --> CHARTS[Plotly 3D, Matplotlib, CSV]
 ```
 
-## 9.  Claim boundaries
+Важная терминология: колонки `open`, `high`, `low`, `close` в результатах содержат **разные статистические величины**, а не цены одной свечи. Использование их в `go.Candlestick` не является экономически корректной OHLC-визуализацией.
 
-```text
-3D visualization != predictive edge
-normalized close  != market close
-feature block      != Renko brick
-price direction    != trade signal
-pretty structure   != stationary process proof
-in-sample plot     != OOS validation
+## Математическая модель
+
+Для каждой свечи с типичной ценой $P_t=(H_t+L_t+C_t)/3$ вычисляются:
+
+$$
+r_t=\frac{P_t}{P_{t-1}}-1,\qquad
+a_t=r_t-r_{t-1}.
+$$
+
+Для тикового объёма $V_t$:
+
+$$
+g_t=\frac{V_t}{V_{t-1}}-1,\qquad
+u_t=g_t-g_{t-1}.
+$$
+
+Волатильность по 20 последним доходностям:
+
+$$
+\sigma_t=\operatorname{std}(r_{t-19},\ldots,r_t),\qquad
+h_t=\frac{\sigma_t}{\sigma_{t-1}}-1.
+$$
+
+Это описание фактических вычислений, а не доказательство стационарности. При $V_{t-1}=0$, $P_{t-1}=0$ или $\sigma_{t-1}=0$ соответствующие отношения не определены и требуют защитных правил.
+
+Для суточной цикличности:
+
+$$
+s_t=\sin(2\pi\,\operatorname{hour}(t)/24),\qquad
+c_t=\cos(2\pi\,\operatorname{hour}(t)/24).
+$$
+
+Эти компоненты корректно задают суточный цикл, но зависят от временной зоны источника.
+
+### Научная проблема нормализации
+
+Обычное преобразование MinMax к диапазону $[3,9]$:
+
+$$
+m(x)=3+6\frac{x-x_{\min}}{x_{\max}-x_{\min}}.
+$$
+
+При единственном наблюдении `MinMaxScaler.fit_transform([[time]])` не может восстановить расстояние между временными отметками: трансформация константного набора вырождается. В исходном коде fit выполняется **отдельно для каждой временной точки**, поэтому результат не сохраняет числовую хронологию.
+
+Дополнительно масштабирование выполняется по всей истории, что недопустимо при последующем OOS-исследовании; необходимо обучать преобразование только на доступном прошлом.
+
+## Выводы аудита
+
+| Приоритет | Дефект или ограничение | Следствие |
+|:--|:--|:--|
+| P0 | Колонки OHLC содержат различные показатели | Candlestick не является настоящей ценовой свечой |
+| P0 | Вызов `scaler.fit_transform` на одной временной величине | Временная координата теряет смысл |
+| P0 | Временная нормализация fit по полному датасету | Возможная утечка будущего при обучении ML |
+| P1 | `min_price_brick` вычисляется из текущего спреда, но не управляет генерацией событий | Метод не строит классические Renko bricks |
+| P1 | `volume_brick` принят параметром, но не используется для накопления объёма | Нет объёмных пороговых кирпичей |
+| P1 | `trend_count=len(window)` постоянно равен 21 | Не измеряет длину тренда |
+| P1 | Статистические z-score и повторная MinMax-нормализация по всей серии | Недостоверные метрики для причинного inference |
+| P1 | `rolling(20)` по волатильности и `pct_change` дают NaN / infinity | Нужна проверка конечности до построения диаграмм |
+| P1 | `trend_ratio` делит число положительных знаков на число отрицательных без защиты знаменателя | Возможное деление на ноль |
+| P1 | Визуальная ось «Price» подписывает нормированные признаки | Риск неверной экономической трактовки |
+| P2 | Нет эталонного теста на стационарность | «stationary-like» остаётся гипотезой |
+| P2 | Нет отдельного набора unit tests и воспроизводимого OOS | Прогнозный эффект не доказан |
+
+## Воспроизведение и результаты
+
+```bash
+git clone https://github.com/Shtenco/3D_bars_market_structure.git
+cd 3D_bars_market_structure
+python -m pip install MetaTrader5 pandas numpy matplotlib seaborn mplfinance scikit-learn scipy plotly
+python 3D_bars_market_structure.py
 ```
 
-## 10.  Methodological risks
+Необходим доступный терминал MetaTrader 5. Версии пакетов в репозитории не зафиксированы, а прогон на реальных исторических данных в этом аудите не выполнялся. Создание CSV и графиков следует рассматривать как предусмотренное кодом, не как проверенный результат эксперимента.
 
-- repeated scaling can obscure units;
-- feature labels reuse OHLC names;
-- time scaler issue described above;
-- percentage changes can produce inf/NaN around zero;
-- no dedicated train/test protocol;
-- no prediction target in core transformation;
-- no automated test suite visible in root;
-- MT5 data provenance/version not preserved.
+## Программа разработки
 
-## 11.  Required repair tests
+**Этап A:** отделить реальный OHLC от признакового пространства и заменить подписи графиков; реализовать единое типизированное описание каждого поля.
 
-1. preserve raw OHLC separately;
-2. rename transformed dimensions honestly;
-3. fit temporal scaler across window/dataset, not one value;
-4. assert no NaN/inf after transform;
-5. deterministic fixture data;
-6. exact feature-value unit tests;
-7. compare with classical Renko if “Renko” retained;
-8. remove lookahead if downstream model added;
-9. freeze preprocessing parameters on train only;
-10. OOS predictive test separately from visualization.
+**Этап B:** определить корректную часовую шкалу, защиту от нулей и обработку NaN/infinity; добавить тесты на константные данные и неравномерные интервалы.
 
-## 12.  Reproducibility
+**Этап C:** если требуется настоящий Renko, строить события по достижению ценового порога с формально заданными reversals; если требуется многомерное представление, убрать вводящее в заблуждение имя Renko.
 
-Expected environment needs a working MetaTrader 5 terminal plus Python dependencies.
+**Этап D:** построить причинный train-only scaler и независимый chronological OOS, сравнить с простыми табличными признаками, проверить stationarity и information gain.
 
-A reproducible future run should record:
+**Этап E:** закрепить источник данных, версии зависимостей, seed, хэши исходной выборки и результаты тестирования.
 
-- symbol;
-- timeframe;
-- start/end;
-- broker/source;
-- raw data hash;
-- spread/point;
-- package versions;
-- generated artifact hashes.
+## Профессиональная ценность
 
-Without a requirements/lock file, exact dependency reproducibility is currently incomplete.
+Проект демонстрирует инженерное объединение MT5, pandas, обработки сигналов, описательных статистик, Plotly и Matplotlib в одном экспериментальном конвейере. Потенциал — удобная лаборатория визуальной диагностики рынка и разработки признаков. Для промышленного применения критично отделить терминологию и визуализацию от настоящих статистических свойств и финансовых сигналов.
 
-## 13.  Repository map
-
-| Path | Role |
-|---|---|
-| `3D_bars_market_structure.py` | all feature/visualization logic |
-| `README.md` | verified technical dossier |
-| `.github/` | automation metadata |
-| tests |  no dedicated test tree observed |
-| evidence |  no formal benchmark evidence tree |
-
-## 14.  Место в SYNERGY
-
-This is legacy market-structure R&D. Outputs should enter modern systems only as versioned research features after parity/tests, potentially through:
-
-- MarketVision;
-- QuantLab;
-- MIDAS research.
-
-It does not have execution authority.
-
-## 15.  Evidence maturity
-
-| Layer | Status |
-|---|---|
-| MT5 data retrieval code |  |
-| multidimensional feature code |  |
-| visualization generation |  |
-| classical Renko parity |  |
-| feature correctness tests |  |
-| preprocessing freeze |  |
-| OOS alpha evidence |  |
-| production trading |  |
-
-## 16.  Roadmap
-
-- repair temporal scaling;
-- rename dimensions;
-- add requirements lock;
-- unit tests;
-- raw/transformed dual data structure;
-- classical Renko baseline;
-- OOS downstream benchmark;
-- migrate useful feature logic to typed modern contract.
-
-## 17.  Что project НЕ утверждает
-
-- that features are truly stationary;
-- that visualization predicts price;
-- that transformed OHLC is original market OHLC;
-- that this is a validated Renko implementation;
-- that any chart implies profitable trading.
-
----
-
-[ SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system) · [ Atlas](https://github.com/Shtenco/synergy_system/blob/main/docs/SYNERGY_REPOSITORY_ATLAS.md)
+[Исходный код](3D_bars_market_structure.py) · [SYNERGY SYSTEM](https://github.com/Shtenco/synergy_system)
