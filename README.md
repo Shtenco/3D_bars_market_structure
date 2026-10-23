@@ -1,3 +1,38 @@
+<div align="center">
+
+<img src="assets/readme/hero.svg" width="100%" alt="3D MARKET STRUCTURE project vector identity"/>
+
+**MT5 bar-to-feature transformation with 3D visualization**
+
+[Overview](#engineering-overview) · [Architecture](#architecture-and-data-flow) · [Evidence](#validation-boundaries) · [Original technical dossier](#original-technical-dossier)
+
+</div>
+
+## Engineering overview
+
+MT5 bar-to-feature transformation with 3D visualization. Primary code entry points: `3D_bars_market_structure.py`. This GitHub repository contains research assets and must not be interpreted as independently audited financial performance or production service.
+
+## Architecture and data flow
+
+```mermaid
+flowchart LR
+ I[Market and input data] --> R[Research implementations]
+ R --> O[Features, decisions or visualizations]
+ O --> V[Independent validation required]
+```
+
+The graph illustrates research responsibilities, not validated real-time connectivity.
+
+## Validation boundaries
+
+> The feature transformation is not conventional Renko; a per-value time scaler undermines temporal comparability.
+
+The presence of source code proves implementation artifacts, **not** reproducible predictive superiority, live trading or investor returns. Validate dataset timing, splits, costs, model versions and results separately.
+
+## Original technical dossier
+
+---
+
 # 🧊 3D Bars Market Structure — verified legacy research dossier
 
 > **Статус:** 🕰️ LEGACY / 🔬 R&D visualization-feature prototype.
